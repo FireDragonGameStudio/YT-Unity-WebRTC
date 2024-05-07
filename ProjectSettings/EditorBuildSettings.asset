@@ -6,8 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/VideoChat-MediaStream-SampleScene.unity
-    guid: 6e67767ccb2f606418cde8efc63974cc
+    path: Assets/Scenes/MediaStream-Audio-SampleScene.unity
+    guid: 0e5b58d3bff2e7d4b8e4aab387f7b170
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bc950679b2d3de74db50f3c1712151ce,
       type: 2}
