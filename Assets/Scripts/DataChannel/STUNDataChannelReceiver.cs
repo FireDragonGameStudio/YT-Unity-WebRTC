@@ -1,9 +1,11 @@
+using NativeWebSocket;
 using System.Collections;
+using System.Collections.Generic;
+using System.Text;
 using Unity.WebRTC;
 using UnityEngine;
-using WebSocketSharp;
 
-public class SimpleDataChannelReceiver : MonoBehaviour {
+public class STUNDataChannelReceiver : MonoBehaviour {
     private RTCPeerConnection connection;
     private RTCDataChannel dataChannel;
 
@@ -14,7 +16,7 @@ public class SimpleDataChannelReceiver : MonoBehaviour {
     private SessionDescription receivedOfferSessionDescTemp;
 
     private void Start() {
-        InitClient("192.168.0.207", 8080);
+        InitClient("unity-stun-signaling.glitch.me");
     }
 
     private void Update() {
@@ -22,20 +24,57 @@ public class SimpleDataChannelReceiver : MonoBehaviour {
             hasReceivedOffer = !hasReceivedOffer;
             StartCoroutine(CreateAnswer());
         }
+
+#if !UNITY_WEBGL || UNITY_EDITOR
+        ws.DispatchMessageQueue();
+#endif
     }
 
     private void OnDestroy() {
         dataChannel.Close();
         connection.Close();
+        ws.Close();
     }
 
-    public void InitClient(string serverIp, int serverPort) {
-        int port = serverPort == 0 ? 8080 : serverPort;
-        clientId = gameObject.name;
+    public void InitClient(string serverIp) {
+        clientId = gameObject.name + "-REC";
 
-        ws = new WebSocket($"ws://{serverIp}:{port}/{nameof(SimpleDataChannelService)}");
-        ws.OnMessage += (sender, e) => {
-            var requestArray = e.Data.Split("!");
+        ws = new WebSocket($"wss://{serverIp}/", new Dictionary<string, string>() {
+            { "user-agent", "unity webrtc datachannel" }
+        });
+
+        ws.OnOpen += () => {
+            // STUN server config
+            RTCConfiguration config = default;
+            config.iceServers = new[] { new RTCIceServer { urls = new[] { "stun:stun.l.google.com:19302" } } };
+
+            connection = new RTCPeerConnection(ref config);
+            connection.OnIceCandidate = candidate => {
+                //Debug.Log("ICE candidate generated: " + candidate.Candidate);
+
+                var candidateInit = new CandidateInit() {
+                    SdpMid = candidate.SdpMid,
+                    SdpMLineIndex = candidate.SdpMLineIndex ?? 0,
+                    Candidate = candidate.Candidate
+                };
+                ws.SendText("CANDIDATE!" + candidateInit.ConvertToJSON());
+            };
+            connection.OnIceConnectionChange = state => {
+                Debug.Log(state);
+            };
+
+            connection.OnDataChannel = channel => {
+                dataChannel = channel;
+                dataChannel.OnMessage = bytes => {
+                    var message = Encoding.UTF8.GetString(bytes);
+                    Debug.Log("Receiver received: " + message);
+                };
+            };
+        };
+
+        ws.OnMessage += (bytes) => {
+            var data = Encoding.UTF8.GetString(bytes);
+            var requestArray = data.Split("!");
             var requestType = requestArray[0];
             var requestData = requestArray[1];
 
@@ -60,34 +99,12 @@ public class SimpleDataChannelReceiver : MonoBehaviour {
                     connection.AddIceCandidate(candidate);
                     break;
                 default:
-                    Debug.Log(clientId + " - Maximus says: " + e.Data);
+                    Debug.Log(clientId + " - Maximus says: " + data);
                     break;
             }
         };
+
         ws.Connect();
-
-        connection = new RTCPeerConnection();
-        connection.OnIceCandidate = candidate => {
-            //Debug.Log("ICE candidate generated: " + candidate.Candidate);
-
-            var candidateInit = new CandidateInit() {
-                SdpMid = candidate.SdpMid,
-                SdpMLineIndex = candidate.SdpMLineIndex ?? 0,
-                Candidate = candidate.Candidate
-            };
-            ws.Send("CANDIDATE!" + candidateInit.ConvertToJSON());
-        };
-        connection.OnIceConnectionChange = state => {
-            Debug.Log(state);
-        };
-
-        connection.OnDataChannel = channel => {
-            dataChannel = channel;
-            dataChannel.OnMessage = bytes => {
-                var message = System.Text.Encoding.UTF8.GetString(bytes);
-                Debug.Log("Receiver received: " + message);
-            };
-        };
     }
 
     private IEnumerator CreateAnswer() {
@@ -110,6 +127,6 @@ public class SimpleDataChannelReceiver : MonoBehaviour {
             SessionType = answerDesc.type.ToString(),
             Sdp = answerDesc.sdp
         };
-        ws.Send("ANSWER!" + answerSessionDesc.ConvertToJSON());
+        ws.SendText("ANSWER!" + answerSessionDesc.ConvertToJSON());
     }
 }
