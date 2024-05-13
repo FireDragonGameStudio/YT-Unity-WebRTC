@@ -1,5 +1,4 @@
-public enum SignalingMessageType
-{
+public enum SignalingMessageType {
     OFFER,
     ANSWER,
     CANDIDATE,

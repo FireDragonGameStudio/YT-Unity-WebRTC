@@ -5,7 +5,8 @@ using System.Text;
 using Unity.WebRTC;
 using UnityEngine;
 
-public class STUNDataChannelSender : MonoBehaviour {
+public class STUNDataChannel : MonoBehaviour {
+
     [SerializeField] private bool sendMessageViaChannel = false;
     [SerializeField] private bool sendTestMessage = false;
 
@@ -14,6 +15,9 @@ public class STUNDataChannelSender : MonoBehaviour {
 
     private WebSocket ws;
     private string clientId;
+
+    private bool hasReceivedOffer = false;
+    private SessionDescription receivedOfferSessionDescTemp;
 
     private bool hasReceivedAnswer = false;
     private SessionDescription receivedAnswerSessionDescTemp;
@@ -55,6 +59,13 @@ public class STUNDataChannelSender : MonoBehaviour {
                 Debug.Log("Sender closed channel");
             };
 
+            connection.OnDataChannel = channel => {
+                channel.OnMessage = bytes => {
+                    var message = Encoding.UTF8.GetString(bytes);
+                    Debug.Log("Receiver received: " + message);
+                };
+            };
+
             connection.OnNegotiationNeeded = () => {
                 StartCoroutine(CreateOffer());
             };
@@ -62,21 +73,24 @@ public class STUNDataChannelSender : MonoBehaviour {
 
         ws.OnMessage += (bytes) => {
             var data = Encoding.UTF8.GetString(bytes);
-            var requestArray = data.Split("!");
-            var requestType = requestArray[0];
-            var requestData = requestArray[1];
+            var signalingMessage = new SignalingMessage(data);
 
-            switch (requestType) {
-                case "ANSWER":
-                    Debug.Log(clientId + " - Got ANSWER from Maximus: " + requestData);
-                    receivedAnswerSessionDescTemp = SessionDescription.FromJSON(requestData);
+            switch (signalingMessage.Type) {
+                case SignalingMessageType.OFFER:
+                    Debug.Log(clientId + " - Got OFFER: " + signalingMessage.Message);
+                    receivedOfferSessionDescTemp = SessionDescription.FromJSON(signalingMessage.Message);
+                    hasReceivedOffer = true;
+                    break;
+                case SignalingMessageType.ANSWER:
+                    Debug.Log(clientId + " - Got ANSWER: " + signalingMessage.Message);
+                    receivedAnswerSessionDescTemp = SessionDescription.FromJSON(signalingMessage.Message);
                     hasReceivedAnswer = true;
                     break;
-                case "CANDIDATE":
-                    Debug.Log(clientId + " - Got CANDIDATE from Maximus: " + requestData);
+                case SignalingMessageType.CANDIDATE:
+                    Debug.Log(clientId + " - Got CANDIDATE: " + signalingMessage.Message);
 
                     // generate candidate data
-                    var candidateInit = CandidateInit.FromJSON(requestData);
+                    var candidateInit = CandidateInit.FromJSON(signalingMessage.Message);
                     RTCIceCandidateInit init = new RTCIceCandidateInit();
                     init.sdpMid = candidateInit.SdpMid;
                     init.sdpMLineIndex = candidateInit.SdpMLineIndex;
@@ -87,7 +101,7 @@ public class STUNDataChannelSender : MonoBehaviour {
                     connection.AddIceCandidate(candidate);
                     break;
                 default:
-                    Debug.Log(clientId + " - Maximus says: " + data);
+                    Debug.Log(clientId + " - Received: " + data);
                     break;
             }
         };
@@ -96,6 +110,10 @@ public class STUNDataChannelSender : MonoBehaviour {
     }
 
     private void Update() {
+        if (hasReceivedOffer) {
+            hasReceivedOffer = !hasReceivedOffer;
+            StartCoroutine(CreateAnswer());
+        }
         if (hasReceivedAnswer) {
             hasReceivedAnswer = !hasReceivedAnswer;
             StartCoroutine(SetRemoteDesc());
@@ -136,6 +154,29 @@ public class STUNDataChannelSender : MonoBehaviour {
         ws.SendText("OFFER!" + offerSessionDesc.ConvertToJSON());
     }
 
+    private IEnumerator CreateAnswer() {
+        RTCSessionDescription offerSessionDesc = new RTCSessionDescription();
+        offerSessionDesc.type = RTCSdpType.Offer;
+        offerSessionDesc.sdp = receivedOfferSessionDescTemp.Sdp;
+
+        var remoteDescOp = connection.SetRemoteDescription(ref offerSessionDesc);
+        yield return remoteDescOp;
+
+        var answer = connection.CreateAnswer();
+        yield return answer;
+
+        var answerDesc = answer.Desc;
+        var localDescOp = connection.SetLocalDescription(ref answerDesc);
+        yield return localDescOp;
+
+        // send desc to server for sender connection
+        var answerSessionDesc = new SessionDescription() {
+            SessionType = answerDesc.type.ToString(),
+            Sdp = answerDesc.sdp
+        };
+        ws.SendText("ANSWER!" + answerSessionDesc.ConvertToJSON());
+    }
+
     private IEnumerator SetRemoteDesc() {
         RTCSessionDescription answerSessionDesc = new RTCSessionDescription();
         answerSessionDesc.type = RTCSdpType.Answer;
@@ -143,5 +184,13 @@ public class STUNDataChannelSender : MonoBehaviour {
 
         var remoteDescOp = connection.SetRemoteDescription(ref answerSessionDesc);
         yield return remoteDescOp;
+    }
+
+    public void SendWebSocketTestMessage() {
+        sendTestMessage = true;
+    }
+
+    public void SendWebRTCDataChannelTestMessage() {
+        sendMessageViaChannel = true;
     }
 }

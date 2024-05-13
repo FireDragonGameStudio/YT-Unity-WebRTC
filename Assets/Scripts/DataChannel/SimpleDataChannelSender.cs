@@ -1,11 +1,9 @@
 using System.Collections;
-using System.Collections.Generic;
 using Unity.WebRTC;
 using UnityEngine;
 using WebSocketSharp;
 
-public class SimpleDataChannelSender : MonoBehaviour
-{
+public class SimpleDataChannelSender : MonoBehaviour {
     [SerializeField] private bool sendMessageViaChannel = false;
 
     private RTCPeerConnection connection;
@@ -17,33 +15,27 @@ public class SimpleDataChannelSender : MonoBehaviour
     private bool hasReceivedAnswer = false;
     private SessionDescription receivedAnswerSessionDescTemp;
 
-    private void Start()
-    {
+    private void Start() {
         InitClient("192.168.0.207", 8080);
     }
 
-    private void Update()
-    {
-        if (hasReceivedAnswer)
-        {
+    private void Update() {
+        if (hasReceivedAnswer) {
             hasReceivedAnswer = !hasReceivedAnswer;
             StartCoroutine(SetRemoteDesc());
         }
-        if (sendMessageViaChannel)
-        {
+        if (sendMessageViaChannel) {
             sendMessageViaChannel = !sendMessageViaChannel;
             dataChannel.Send("TEST!TEST TEST");
         }
     }
 
-    private void OnDestroy()
-    {
+    private void OnDestroy() {
         dataChannel.Close();
         connection.Close();
     }
 
-    public void InitClient(string serverIp, int serverPort)
-    {
+    public void InitClient(string serverIp, int serverPort) {
         int port = serverPort == 0 ? 8080 : serverPort;
         clientId = gameObject.name;
 
@@ -53,8 +45,7 @@ public class SimpleDataChannelSender : MonoBehaviour
             var requestType = requestArray[0];
             var requestData = requestArray[1];
 
-            switch (requestType)
-            {
+            switch (requestType) {
                 case "ANSWER":
                     Debug.Log(clientId + " - Got ANSWER from Maximus: " + requestData);
                     receivedAnswerSessionDescTemp = SessionDescription.FromJSON(requestData);
@@ -85,8 +76,7 @@ public class SimpleDataChannelSender : MonoBehaviour
         connection.OnIceCandidate = candidate => {
             //Debug.Log("ICE candidate generated: " + candidate.Candidate);
 
-            var candidateInit = new CandidateInit()
-            {
+            var candidateInit = new CandidateInit() {
                 SdpMid = candidate.SdpMid,
                 SdpMLineIndex = candidate.SdpMLineIndex ?? 0,
                 Candidate = candidate.Candidate
@@ -110,8 +100,7 @@ public class SimpleDataChannelSender : MonoBehaviour
         };
     }
 
-    private IEnumerator CreateOffer()
-    {
+    private IEnumerator CreateOffer() {
         var offer = connection.CreateOffer();
         yield return offer;
 
@@ -120,16 +109,14 @@ public class SimpleDataChannelSender : MonoBehaviour
         yield return localDescOp;
 
         // send desc to server for receiver connection
-        var offerSessionDesc = new SessionDescription()
-        {
+        var offerSessionDesc = new SessionDescription() {
             SessionType = offerDesc.type.ToString(),
             Sdp = offerDesc.sdp
         };
         ws.Send("OFFER!" + offerSessionDesc.ConvertToJSON());
     }
 
-    private IEnumerator SetRemoteDesc()
-    {
+    private IEnumerator SetRemoteDesc() {
         RTCSessionDescription answerSessionDesc = new RTCSessionDescription();
         answerSessionDesc.type = RTCSdpType.Answer;
         answerSessionDesc.sdp = receivedAnswerSessionDescTemp.Sdp;

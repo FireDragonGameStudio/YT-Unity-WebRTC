@@ -4,8 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WebSocketSharp;
 
-public class SimpleMediaStreamSender : MonoBehaviour
-{
+public class SimpleMediaStreamSender : MonoBehaviour {
     [SerializeField] private Camera cameraStream;
     [SerializeField] private RawImage sourceImage;
 
@@ -19,13 +18,11 @@ public class SimpleMediaStreamSender : MonoBehaviour
     private bool hasReceivedAnswer = false;
     private SessionDescription receivedAnswerSessionDescTemp;
 
-    private void Start()
-    {
+    private void Start() {
         InitClient("192.168.0.207", 8080);
     }
 
-    public void InitClient(string serverIp, int serverPort)
-    {
+    public void InitClient(string serverIp, int serverPort) {
         int port = serverPort == 0 ? 8080 : serverPort;
         clientId = gameObject.name;
 
@@ -33,8 +30,7 @@ public class SimpleMediaStreamSender : MonoBehaviour
         ws.OnMessage += (sender, e) => {
             var signalingMessage = new SignalingMessage(e.Data);
 
-            switch (signalingMessage.Type)
-            {
+            switch (signalingMessage.Type) {
                 case SignalingMessageType.ANSWER:
                     Debug.Log($"{clientId} - Got ANSWER from Maximus: {signalingMessage.Message}");
                     receivedAnswerSessionDescTemp = SessionDescription.FromJSON(signalingMessage.Message);
@@ -63,8 +59,7 @@ public class SimpleMediaStreamSender : MonoBehaviour
 
         connection = new RTCPeerConnection();
         connection.OnIceCandidate = candidate => {
-            var candidateInit = new CandidateInit()
-            {
+            var candidateInit = new CandidateInit() {
                 SdpMid = candidate.SdpMid,
                 SdpMLineIndex = candidate.SdpMLineIndex ?? 0,
                 Candidate = candidate.Candidate
@@ -86,25 +81,21 @@ public class SimpleMediaStreamSender : MonoBehaviour
         StartCoroutine(WebRTC.Update());
     }
 
-    private void Update()
-    {
-        if (hasReceivedAnswer)
-        {
+    private void Update() {
+        if (hasReceivedAnswer) {
             hasReceivedAnswer = !hasReceivedAnswer;
             StartCoroutine(SetRemoteDesc());
         }
     }
 
-    private void OnDestroy()
-    {
+    private void OnDestroy() {
         videoStreamTrack.Stop();
         connection.Close();
 
         ws.Close();
     }
 
-    private IEnumerator CreateOffer()
-    {
+    private IEnumerator CreateOffer() {
         var offer = connection.CreateOffer();
         yield return offer;
 
@@ -113,16 +104,14 @@ public class SimpleMediaStreamSender : MonoBehaviour
         yield return localDescOp;
 
         // send desc to server for receiver connection
-        var offerSessionDesc = new SessionDescription()
-        {
+        var offerSessionDesc = new SessionDescription() {
             SessionType = offerDesc.type.ToString(),
             Sdp = offerDesc.sdp
         };
         ws.Send("OFFER!" + offerSessionDesc.ConvertToJSON());
     }
 
-    private IEnumerator SetRemoteDesc()
-    {
+    private IEnumerator SetRemoteDesc() {
         RTCSessionDescription answerSessionDesc = new RTCSessionDescription();
         answerSessionDesc.type = RTCSdpType.Answer;
         answerSessionDesc.sdp = receivedAnswerSessionDescTemp.Sdp;

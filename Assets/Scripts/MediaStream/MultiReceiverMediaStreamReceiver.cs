@@ -4,8 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WebSocketSharp;
 
-public class MultiReceiverMediaStreamReceiver : MonoBehaviour
-{
+public class MultiReceiverMediaStreamReceiver : MonoBehaviour {
     [SerializeField] private RawImage receiveImage;
 
     private RTCPeerConnection connection;
@@ -20,13 +19,11 @@ public class MultiReceiverMediaStreamReceiver : MonoBehaviour
     private int senderPort;
     private int channelId;
 
-    private void Start()
-    {
+    private void Start() {
         InitClient("192.168.0.207", 8080);
     }
 
-    public void InitClient(string serverIp, int serverPort)
-    {
+    public void InitClient(string serverIp, int serverPort) {
         senderPort = serverPort == 0 ? 8080 : serverPort;
         senderIp = serverIp;
 
@@ -36,8 +33,7 @@ public class MultiReceiverMediaStreamReceiver : MonoBehaviour
         ws.OnMessage += (sender, e) => {
             var signalingMessage = new SignalingMessageChannel(e.Data);
 
-            switch (signalingMessage.Type)
-            {
+            switch (signalingMessage.Type) {
                 case SignalingMessageType.CHANNEL:
                     Debug.Log("RECEIVER received channel id: " + signalingMessage.ChannelId);
 
@@ -45,8 +41,7 @@ public class MultiReceiverMediaStreamReceiver : MonoBehaviour
 
                     connection = new RTCPeerConnection();
                     connection.OnIceCandidate = candidate => {
-                        var candidateInit = new CandidateInit()
-                        {
+                        var candidateInit = new CandidateInit() {
                             SdpMid = candidate.SdpMid,
                             SdpMLineIndex = candidate.SdpMLineIndex ?? 0,
                             Candidate = candidate.Candidate
@@ -57,12 +52,9 @@ public class MultiReceiverMediaStreamReceiver : MonoBehaviour
                         Debug.Log(state);
                     };
 
-                    connection.OnTrack = e =>
-                    {
-                        if (e.Track is VideoStreamTrack video)
-                        {
-                            video.OnVideoReceived += tex =>
-                            {
+                    connection.OnTrack = e => {
+                        if (e.Track is VideoStreamTrack video) {
+                            video.OnVideoReceived += tex => {
                                 receiveImage.texture = tex;
                             };
                         }
@@ -71,8 +63,7 @@ public class MultiReceiverMediaStreamReceiver : MonoBehaviour
                 case SignalingMessageType.OFFER:
                     Debug.Log(clientId + " - Got OFFER with channel ID " + signalingMessage.ChannelId + " from Maximus: " + signalingMessage.Message);
 
-                    if (channelId == signalingMessage.ChannelId)
-                    {
+                    if (channelId == signalingMessage.ChannelId) {
                         receivedOfferSessionDescTemp = SessionDescription.FromJSON(signalingMessage.Message);
                         hasReceivedOffer = true;
                     }
@@ -80,8 +71,7 @@ public class MultiReceiverMediaStreamReceiver : MonoBehaviour
                 case SignalingMessageType.CANDIDATE:
                     Debug.Log(clientId + " - Got CANDIDATE with channel ID " + signalingMessage.ChannelId + " from Maximus: " + signalingMessage.Message);
 
-                    if (channelId == signalingMessage.ChannelId)
-                    {
+                    if (channelId == signalingMessage.ChannelId) {
                         // generate candidate data
                         var candidateInit = CandidateInit.FromJSON(signalingMessage.Message);
                         RTCIceCandidateInit init = new RTCIceCandidateInit();
@@ -105,22 +95,18 @@ public class MultiReceiverMediaStreamReceiver : MonoBehaviour
         StartCoroutine(WebRTC.Update());
     }
 
-    private void Update()
-    {
-        if (hasReceivedOffer)
-        {
+    private void Update() {
+        if (hasReceivedOffer) {
             hasReceivedOffer = !hasReceivedOffer;
             StartCoroutine(CreateAnswer());
         }
     }
 
-    private void OnDestroy()
-    {
+    private void OnDestroy() {
         connection.Close();
     }
 
-    private IEnumerator CreateAnswer()
-    {
+    private IEnumerator CreateAnswer() {
         RTCSessionDescription offerSessionDesc = new RTCSessionDescription();
         offerSessionDesc.type = RTCSdpType.Offer;
         offerSessionDesc.sdp = receivedOfferSessionDescTemp.Sdp;
@@ -136,8 +122,7 @@ public class MultiReceiverMediaStreamReceiver : MonoBehaviour
         yield return localDescOp;
 
         // send desc to server for sender connection
-        var answerSessionDesc = new SessionDescription()
-        {
+        var answerSessionDesc = new SessionDescription() {
             SessionType = answerDesc.type.ToString(),
             Sdp = answerDesc.sdp
         };

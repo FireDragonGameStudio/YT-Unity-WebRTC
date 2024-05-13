@@ -2,8 +2,7 @@ using System.Collections.Generic;
 using WebSocketSharp;
 using WebSocketSharp.Server;
 
-public class VideoChatMediaStreamService : WebSocketBehavior
-{
+public class VideoChatMediaStreamService : WebSocketBehavior {
     // naming convention is first number is sender, second number is receiver
     private static List<string> connections = new List<string>()
     {
@@ -11,8 +10,7 @@ public class VideoChatMediaStreamService : WebSocketBehavior
     };
     private static int connectionCounter = 0;
 
-    protected override void OnOpen()
-    {
+    protected override void OnOpen() {
         // send clientId
         Sessions.SendTo(connectionCounter.ToString(), ID);
         connectionCounter++;
@@ -21,13 +19,10 @@ public class VideoChatMediaStreamService : WebSocketBehavior
         Sessions.SendTo(string.Join("|", connections), ID);
     }
 
-    protected override void OnMessage(MessageEventArgs e)
-    {
+    protected override void OnMessage(MessageEventArgs e) {
         // forward messages to all other clients
-        foreach (var id in Sessions.ActiveIDs)
-        {
-            if (id != ID)
-            {
+        foreach (var id in Sessions.ActiveIDs) {
+            if (id != ID) {
                 Sessions.SendTo(e.Data, id);
             }
         }

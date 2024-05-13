@@ -4,8 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WebSocketSharp;
 
-public class SimpleMediaStreamReceiver : MonoBehaviour
-{
+public class SimpleMediaStreamReceiver : MonoBehaviour {
     [SerializeField] private RawImage receiveImage;
 
     private RTCPeerConnection connection;
@@ -19,13 +18,11 @@ public class SimpleMediaStreamReceiver : MonoBehaviour
     private string senderIp;
     private int senderPort;
 
-    private void Start()
-    {
+    private void Start() {
         InitClient("192.168.0.207", 8080);
     }
 
-    public void InitClient(string serverIp, int serverPort)
-    {
+    public void InitClient(string serverIp, int serverPort) {
         senderPort = serverPort == 0 ? 8080 : serverPort;
         senderIp = serverIp;
 
@@ -35,8 +32,7 @@ public class SimpleMediaStreamReceiver : MonoBehaviour
         ws.OnMessage += (sender, e) => {
             var signalingMessage = new SignalingMessage(e.Data);
 
-            switch (signalingMessage.Type)
-            {
+            switch (signalingMessage.Type) {
                 case SignalingMessageType.OFFER:
                     Debug.Log($"{clientId} - Got OFFER from Maximus: {signalingMessage.Message}");
                     receivedOfferSessionDescTemp = SessionDescription.FromJSON(signalingMessage.Message);
@@ -65,8 +61,7 @@ public class SimpleMediaStreamReceiver : MonoBehaviour
 
         connection = new RTCPeerConnection();
         connection.OnIceCandidate = candidate => {
-            var candidateInit = new CandidateInit()
-            {
+            var candidateInit = new CandidateInit() {
                 SdpMid = candidate.SdpMid,
                 SdpMLineIndex = candidate.SdpMLineIndex ?? 0,
                 Candidate = candidate.Candidate
@@ -77,12 +72,9 @@ public class SimpleMediaStreamReceiver : MonoBehaviour
             Debug.Log(state);
         };
 
-        connection.OnTrack = e =>
-        {
-            if (e.Track is VideoStreamTrack video)
-            {
-                video.OnVideoReceived += tex =>
-                {
+        connection.OnTrack = e => {
+            if (e.Track is VideoStreamTrack video) {
+                video.OnVideoReceived += tex => {
                     receiveImage.texture = tex;
                 };
             }
@@ -91,23 +83,19 @@ public class SimpleMediaStreamReceiver : MonoBehaviour
         StartCoroutine(WebRTC.Update());
     }
 
-    private void Update()
-    {
-        if (hasReceivedOffer)
-        {
+    private void Update() {
+        if (hasReceivedOffer) {
             hasReceivedOffer = !hasReceivedOffer;
             StartCoroutine(CreateAnswer());
         }
     }
 
-    private void OnDestroy()
-    {
+    private void OnDestroy() {
         connection.Close();
         ws.Close();
     }
 
-    private IEnumerator CreateAnswer()
-    {
+    private IEnumerator CreateAnswer() {
         RTCSessionDescription offerSessionDesc = new RTCSessionDescription();
         offerSessionDesc.type = RTCSdpType.Offer;
         offerSessionDesc.sdp = receivedOfferSessionDescTemp.Sdp;
@@ -123,8 +111,7 @@ public class SimpleMediaStreamReceiver : MonoBehaviour
         yield return localDescOp;
 
         // send desc to server for sender connection
-        var answerSessionDesc = new SessionDescription()
-        {
+        var answerSessionDesc = new SessionDescription() {
             SessionType = answerDesc.type.ToString(),
             Sdp = answerDesc.sdp
         };

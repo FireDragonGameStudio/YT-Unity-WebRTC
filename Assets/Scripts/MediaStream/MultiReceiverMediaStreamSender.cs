@@ -5,8 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WebSocketSharp;
 
-public class MultiReceiverMediaStreamSender : MonoBehaviour
-{
+public class MultiReceiverMediaStreamSender : MonoBehaviour {
     [SerializeField] private Camera cameraStream;
     [SerializeField] private RawImage sourceImage;
 
@@ -16,13 +15,11 @@ public class MultiReceiverMediaStreamSender : MonoBehaviour
     private string clientId;
     private Dictionary<int, RTCPeerConnection> channels = new Dictionary<int, RTCPeerConnection>();
 
-    private void Start()
-    {
+    private void Start() {
         InitClient("192.168.0.207", 8080);
     }
 
-    public void InitClient(string serverIp, int serverPort)
-    {
+    public void InitClient(string serverIp, int serverPort) {
         int port = serverPort == 0 ? 8080 : serverPort;
         clientId = gameObject.name;
 
@@ -30,16 +27,14 @@ public class MultiReceiverMediaStreamSender : MonoBehaviour
         ws.OnMessage += (sender, e) => {
             var signalingMessage = new SignalingMessageChannel(e.Data);
 
-            switch (signalingMessage.Type)
-            {
+            switch (signalingMessage.Type) {
                 case SignalingMessageType.CHANNEL:
                     Debug.Log("SENDER received channel id: " + signalingMessage.ChannelId);
 
                     var channelId = signalingMessage.ChannelId;
                     var connection = new RTCPeerConnection();
                     connection.OnIceCandidate = candidate => {
-                        var candidateInit = new CandidateInit()
-                        {
+                        var candidateInit = new CandidateInit() {
                             SdpMid = candidate.SdpMid,
                             SdpMLineIndex = candidate.SdpMLineIndex ?? 0,
                             Candidate = candidate.Candidate
@@ -100,16 +95,13 @@ public class MultiReceiverMediaStreamSender : MonoBehaviour
         StartCoroutine(WebRTC.Update());
     }
 
-    private void OnDestroy()
-    {
-        foreach (var channel in channels)
-        {
+    private void OnDestroy() {
+        foreach (var channel in channels) {
             channel.Value.Close();
         }
     }
 
-    private IEnumerator CreateOffer(RTCPeerConnection pc, int channelId)
-    {
+    private IEnumerator CreateOffer(RTCPeerConnection pc, int channelId) {
         var offer = pc.CreateOffer();
         yield return offer;
 
@@ -118,8 +110,7 @@ public class MultiReceiverMediaStreamSender : MonoBehaviour
         yield return localDescOp;
 
         // send desc to server for receiver connection
-        var offerSessionDesc = new SessionDescription()
-        {
+        var offerSessionDesc = new SessionDescription() {
             SessionType = offerDesc.type.ToString(),
             Sdp = offerDesc.sdp
         };

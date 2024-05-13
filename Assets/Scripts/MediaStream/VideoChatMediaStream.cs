@@ -5,8 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WebSocketSharp;
 
-public class VideoChatMediaStream : MonoBehaviour
-{
+public class VideoChatMediaStream : MonoBehaviour {
     [SerializeField] private string clientId;
     [SerializeField] private Camera cameraStream;
     [SerializeField] private RawImage sourceImage;
@@ -24,46 +23,38 @@ public class VideoChatMediaStream : MonoBehaviour
 
     private int receiveImageCounter = 0;
 
-    private void Start()
-    {
+    private void Start() {
         InitClient("192.168.0.207", 8080);
     }
 
-    private void Update()
-    {
-        if (hasReceivedOffer)
-        {
+    private void Update() {
+        if (hasReceivedOffer) {
             hasReceivedOffer = !hasReceivedOffer;
             StartCoroutine(CreateAnswer(pcs[receivedOfferChannelId], receivedOfferChannelId));
         }
     }
 
-    private void OnDestroy()
-    {
+    private void OnDestroy() {
         videoStreamTrack.Stop();
 
-        foreach (var connection in pcs)
-        {
+        foreach (var connection in pcs) {
             connection.Value.Close();
         }
 
         ws.Close();
     }
 
-    public void InitClient(string serverIp, int serverPort)
-    {
+    public void InitClient(string serverIp, int serverPort) {
         int port = serverPort == 0 ? 8080 : serverPort;
 
         ws = new WebSocket($"ws://{serverIp}:{port}/{nameof(VideoChatMediaStreamService)}");
         ws.OnMessage += (sender, e) => {
             var signalingMessage = new SignalingMessageVideoChat(e.Data);
 
-            switch (signalingMessage.Type)
-            {
+            switch (signalingMessage.Type) {
                 case SignalingMessageType.OFFER:
                     // only set offer and send answer on receiving connections on this client
-                    if (clientId == signalingMessage.ChannelId.Substring(1, 1))
-                    {
+                    if (clientId == signalingMessage.ChannelId.Substring(1, 1)) {
                         Debug.Log(clientId + " - Got OFFER with channel ID " + signalingMessage.ChannelId + " from Maximus: " + signalingMessage.Message);
 
                         receivedOfferChannelId = signalingMessage.ChannelId;
@@ -74,8 +65,7 @@ public class VideoChatMediaStream : MonoBehaviour
                     break;
                 case SignalingMessageType.ANSWER:
                     // only set answer for sending connections on this client
-                    if (clientId == signalingMessage.ChannelId.Substring(0, 1))
-                    {
+                    if (clientId == signalingMessage.ChannelId.Substring(0, 1)) {
                         Debug.Log(clientId + " - Got ANSWER with channel ID " + signalingMessage.ChannelId + " from Maximus: " + signalingMessage.Message);
 
                         var receivedAnswerSessionDescTemp = SessionDescription.FromJSON(signalingMessage.Message);
@@ -89,8 +79,7 @@ public class VideoChatMediaStream : MonoBehaviour
                     break;
                 case SignalingMessageType.CANDIDATE:
                     // only set candidates on receiving connections for this client
-                    if (clientId == signalingMessage.ChannelId.Substring(1, 1))
-                    {
+                    if (clientId == signalingMessage.ChannelId.Substring(1, 1)) {
                         Debug.Log(clientId + " - Got CANDIDATE with channel ID " + signalingMessage.ChannelId + " from Maximus: " + signalingMessage.Message);
 
                         // generate candidate data
@@ -107,21 +96,16 @@ public class VideoChatMediaStream : MonoBehaviour
 
                     break;
                 default:
-                    if (e.Data.Contains("|"))
-                    {
+                    if (e.Data.Contains("|")) {
                         var connectionIds = e.Data.Split("|");
-                        foreach (var connectionId in connectionIds)
-                        {
+                        foreach (var connectionId in connectionIds) {
                             // only add relevant sending/receiving connections for this client
                             // e.g. for client 1 -> sending: 10, 12 receiving: 01, 21
-                            if (connectionId.Contains(clientId))
-                            {
+                            if (connectionId.Contains(clientId)) {
                                 pcs.Add(connectionId, CreatePeerConnection(connectionId));
                             }
                         }
-                    } 
-                    else
-                    {
+                    } else {
                         // set client id, based on connection order
                         clientId = e.Data;
                     }
@@ -137,12 +121,10 @@ public class VideoChatMediaStream : MonoBehaviour
         StartCoroutine(WebRTC.Update());
     }
 
-    private RTCPeerConnection CreatePeerConnection(string id)
-    {
+    private RTCPeerConnection CreatePeerConnection(string id) {
         var pc = new RTCPeerConnection();
         pc.OnIceCandidate = candidate => {
-            var candidateInit = new CandidateInit()
-            {
+            var candidateInit = new CandidateInit() {
                 SdpMid = candidate.SdpMid,
                 SdpMLineIndex = candidate.SdpMLineIndex ?? 0,
                 Candidate = candidate.Candidate
@@ -157,12 +139,9 @@ public class VideoChatMediaStream : MonoBehaviour
             StartCoroutine(CreateOffer(pc, id));
         };
 
-        pc.OnTrack = e =>
-        {
-            if (e.Track is VideoStreamTrack track)
-            {
-                track.OnVideoReceived += tex =>
-                {
+        pc.OnTrack = e => {
+            if (e.Track is VideoStreamTrack track) {
+                track.OnVideoReceived += tex => {
                     receiveImages[receiveImageCounter].texture = tex;
                     receiveImageCounter++;
                 };
@@ -172,8 +151,7 @@ public class VideoChatMediaStream : MonoBehaviour
         return pc;
     }
 
-    private IEnumerator CreateOffer(RTCPeerConnection pc, string id)
-    {
+    private IEnumerator CreateOffer(RTCPeerConnection pc, string id) {
         var offer = pc.CreateOffer();
         yield return offer;
 
@@ -182,16 +160,14 @@ public class VideoChatMediaStream : MonoBehaviour
         yield return localDescOp;
 
         // send desc to server for receiver connection
-        var offerSessionDesc = new SessionDescription()
-        {
+        var offerSessionDesc = new SessionDescription() {
             SessionType = offerDesc.type.ToString(),
             Sdp = offerDesc.sdp
         };
         ws.Send("OFFER!" + id + "!" + offerSessionDesc.ConvertToJSON());
     }
 
-    private IEnumerator CreateAnswer(RTCPeerConnection pc, string id)
-    {
+    private IEnumerator CreateAnswer(RTCPeerConnection pc, string id) {
         RTCSessionDescription offerSessionDesc = new RTCSessionDescription();
         offerSessionDesc.type = RTCSdpType.Offer;
         offerSessionDesc.sdp = receivedOfferSessionDescTemp.Sdp;
@@ -207,22 +183,18 @@ public class VideoChatMediaStream : MonoBehaviour
         yield return localDescOp;
 
         // send desc to server for sender connection
-        var answerSessionDesc = new SessionDescription()
-        {
+        var answerSessionDesc = new SessionDescription() {
             SessionType = answerDesc.type.ToString(),
             Sdp = answerDesc.sdp
         };
         ws.Send("ANSWER!" + id + "!" + answerSessionDesc.ConvertToJSON());
     }
 
-    public void Call()
-    {
-        foreach (var connection in pcs)
-        {
+    public void Call() {
+        foreach (var connection in pcs) {
             // only add tracks for sending connections
             // aka first number is client id
-            if (connection.Key.Substring(0, 1) == clientId)
-            {
+            if (connection.Key.Substring(0, 1) == clientId) {
                 connection.Value.AddTrack(videoStreamTrack);
             }
         }
