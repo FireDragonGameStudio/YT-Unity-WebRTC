@@ -11,7 +11,8 @@ public class STUNDataChannel : MonoBehaviour {
     [SerializeField] private bool sendTestMessage = false;
 
     private RTCPeerConnection connection;
-    private RTCDataChannel dataChannel;
+    private RTCDataChannel senderDataChannel;
+    private RTCDataChannel receiverDataChannel;
 
     private WebSocket ws;
     private string clientId;
@@ -51,16 +52,17 @@ public class STUNDataChannel : MonoBehaviour {
                 Debug.Log(state);
             };
 
-            dataChannel = connection.CreateDataChannel("sendChannel");
-            dataChannel.OnOpen = () => {
+            senderDataChannel = connection.CreateDataChannel("sendChannel");
+            senderDataChannel.OnOpen = () => {
                 Debug.Log("Sender opened channel");
             };
-            dataChannel.OnClose = () => {
+            senderDataChannel.OnClose = () => {
                 Debug.Log("Sender closed channel");
             };
 
             connection.OnDataChannel = channel => {
-                channel.OnMessage = bytes => {
+                receiverDataChannel = channel;
+                receiverDataChannel.OnMessage = bytes => {
                     var message = Encoding.UTF8.GetString(bytes);
                     Debug.Log("Receiver received: " + message);
                 };
@@ -120,7 +122,7 @@ public class STUNDataChannel : MonoBehaviour {
         }
         if (sendMessageViaChannel) {
             sendMessageViaChannel = !sendMessageViaChannel;
-            dataChannel.Send("TEST!WEBRTC DATACHANNEL TEST");
+            senderDataChannel.Send("TEST!WEBRTC DATACHANNEL TEST");
         }
         if (sendTestMessage) {
             sendTestMessage = !sendTestMessage;
@@ -133,7 +135,7 @@ public class STUNDataChannel : MonoBehaviour {
     }
 
     private void OnDestroy() {
-        dataChannel.Close();
+        senderDataChannel.Close();
         connection.Close();
         ws.Close();
     }
