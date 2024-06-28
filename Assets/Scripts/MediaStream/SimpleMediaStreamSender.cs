@@ -9,7 +9,6 @@ public class SimpleMediaStreamSender : MonoBehaviour {
     [SerializeField] private RawImage sourceImage;
 
     private RTCPeerConnection connection;
-    private MediaStream videoStream;
     private VideoStreamTrack videoStreamTrack;
 
     private WebSocket ws;
