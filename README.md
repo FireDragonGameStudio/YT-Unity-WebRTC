@@ -9,3 +9,4 @@ The following tutorials explain the usage of this repo:
 * [WebRTC MediaStream Multi-User chat application in LAN](https://youtu.be/dUbLh8mXEkg)
 * [WebRTC MediaStream Audio in LAN](https://youtu.be/2Plc2o-QOlA)
 * [WebRTC DataChannel with WebSockets over WEB](https://youtu.be/Jp8SrA3Dixw)
+* [WebRTC Audio-, Video- and DataChannel with WebSockets over Web](https://youtu.be/GGCiJbn4SNM)
